@@ -26,7 +26,28 @@ export class AppController {
     ]);
 
     return {
-      messages,
+      messages: messages.map(msg => {
+        const {
+          hash,
+          sourceChainId,
+          targetChainId,
+          sourceChainTxHash,
+          targetChainTxHash,
+          sourceChainTxTimestamp,
+          targetChainTxTimestamp,
+          l1BlockNumber
+        } = msg;
+        return {
+          hash,
+          sourceChainId,
+          targetChainId,
+          sourceChainTxHash,
+          targetChainTxHash,
+          sourceChainTxTimestamp,
+          targetChainTxTimestamp,
+          l1BlockNumber
+        }
+      }),
       totalPages: Math.ceil(count / limit),
       currentPage: page
     }
