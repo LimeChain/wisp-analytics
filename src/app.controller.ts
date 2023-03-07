@@ -27,25 +27,15 @@ export class AppController {
 
     return {
       messages: messages.map(msg => {
-        const {
-          hash,
-          sourceChainId,
-          targetChainId,
-          sourceChainTxHash,
-          targetChainTxHash,
-          sourceChainTxTimestamp,
-          targetChainTxTimestamp,
-          l1BlockNumber
-        } = msg;
         return {
-          hash,
-          sourceChainId,
-          targetChainId,
-          sourceChainTxHash,
-          targetChainTxHash,
-          sourceChainTxTimestamp,
-          targetChainTxTimestamp,
-          l1BlockNumber
+          hash: msg.hash,
+          sourceChainId: msg.sourceChainId,
+          targetChainId: msg.targetChainId,
+          sourceChainTxHash: msg.sourceChainTxHash,
+          targetChainTxHash: msg.targetChainTxHash,
+          sourceChainTxTimestamp: msg.sourceChainTxTimestamp,
+          targetChainTxTimestamp: msg.targetChainTxTimestamp,
+          l1BlockNumber: msg.l1BlockNumber
         }
       }),
       totalPages: Math.ceil(count / limit),
@@ -55,9 +45,23 @@ export class AppController {
 
   @Get('/light-client-updates')
   async getLightClientUpdates(@Query('page') page = 1, @Query('limit') limit = 10) {
-    let count = 1;
+    const [updates, count] = await Promise.all([
+      this.persistence.lightClientUpdates.find().skip((page - 1) * limit).limit(limit).exec(),
+      this.persistence.lightClientUpdates.countDocuments().exec()
+    ]);
+
     return {
-      updates: [],
+      updates: updates.map(update => {
+        return {
+          chainId: update.chainId,
+          transactionHash: update.transactionHash,
+          transactionTimestamp: update.transactionTimestamp,
+          slot: update.slot,
+          l1BlockNumber: update.l1BlockNumber,
+          l1BlockTimestamp: update.l1BlockTimestamp,
+          executionRoot: update.executionRoot
+        }
+      }),
       totalPages: Math.ceil(count / limit),
       currentPage: page
     }
