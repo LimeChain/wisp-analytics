@@ -8,12 +8,14 @@ export class AppController {
 
   @Get('/overview')
   async getOverview() {
-    const [count] = await Promise.all([
-      this.persistence.messages.countDocuments().exec()
+    const pipeline = AppController.getAvgDurationQueryPipeline();
+    const [count, avgGrouping] = await Promise.all([
+      this.persistence.messages.countDocuments().exec(),
+      this.persistence.messages.aggregate(pipeline).exec()
     ])
     return {
       totalMessages: count,
-      averageDeliveryDuration: 0,
+      averageDeliveryDuration: Math.floor(avgGrouping[0]?.averageDeliveryDuration ?? 0),
       averageCost: 0
     }
   }
@@ -65,5 +67,26 @@ export class AppController {
       totalPages: Math.ceil(count / limit),
       currentPage: page
     }
+  }
+
+  private static getAvgDurationQueryPipeline() {
+    return [
+      {
+        $match: {
+          targetChainTxTimestamp: {$ne: 0}
+        }
+      },
+      {
+        $project: {
+          duration: {$subtract: ['$targetChainTxTimestamp', '$sourceChainTxTimestamp']}
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          averageDeliveryDuration: {$avg: '$duration'}
+        }
+      }
+    ];
   }
 }
