@@ -8,22 +8,24 @@ export class AppController {
 
   @Get('/overview')
   async getOverview() {
-    const pipeline = AppController.getAvgDurationQueryPipeline();
-    const [count, avgGrouping] = await Promise.all([
+    const avgDurationPipeline = AppController.getAvgDurationQueryPipeline();
+    const avgCostPipeline = AppController.getAvgCostQueryPipeline();
+    const [count, avgDurationResult, avgCostResult] = await Promise.all([
       this.persistence.messages.countDocuments().exec(),
-      this.persistence.messages.aggregate(pipeline).exec()
+      this.persistence.messages.aggregate(avgDurationPipeline).exec(),
+      this.persistence.messages.aggregate(avgCostPipeline).exec()
     ])
     return {
       totalMessages: count,
-      averageDeliveryDuration: Math.floor(avgGrouping[0]?.averageDeliveryDuration ?? 0),
-      averageCost: 0
+      averageDeliveryDuration: Math.floor(avgDurationResult[0]?.averageDeliveryDuration ?? 0),
+      averageCost: avgCostResult[0]?.averageCost ?? "0"
     }
   }
 
   @Get('/messages')
   async getMessages(@Query('page') page = 1, @Query('limit') limit = 10) {
     const [messages, count] = await Promise.all([
-      this.persistence.messages.find().skip((page - 1) * limit).limit(limit).exec(),
+      this.persistence.messages.find().sort({ sourceChainTxTimestamp: -1 }).skip((page - 1) * limit).limit(limit).exec(),
       this.persistence.messages.countDocuments().exec()
     ]);
 
@@ -48,7 +50,7 @@ export class AppController {
   @Get('/light-client-updates')
   async getLightClientUpdates(@Query('page') page = 1, @Query('limit') limit = 10) {
     const [updates, count] = await Promise.all([
-      this.persistence.lightClientUpdates.find().skip((page - 1) * limit).limit(limit).exec(),
+      this.persistence.lightClientUpdates.find().sort({transactionTimestamp: -1}).skip((page - 1) * limit).limit(limit).exec(),
       this.persistence.lightClientUpdates.countDocuments().exec()
     ]);
 
@@ -89,4 +91,29 @@ export class AppController {
       }
     ];
   }
+
+  private static getAvgCostQueryPipeline() {
+    return [
+      {
+        $match: {
+          stateRelayCost: {$exists: true},
+          deliveryCost:  {$exists: true}
+        },
+      },
+      {
+        $project: {
+          totalCost: {
+            $sum: [{$toLong: '$stateRelayCost'}, {$toLong: '$deliveryCost'}],
+          },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          averageCost: {$avg: '$totalCost'},
+        },
+      },
+    ];
+  }
+
 }
