@@ -96,8 +96,8 @@ export class AppController {
     return [
       {
         $match: {
-          stateRelayCost: {$exists: true},
-          deliveryCost:  {$exists: true}
+          stateRelayCost: {$ne: null},
+          deliveryCost:  {$ne: null}
         },
       },
       {

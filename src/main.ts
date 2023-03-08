@@ -8,7 +8,7 @@ async function bootstrap() {
   app.enableCors();
 
   const logger = new Logger("Main");
-  const port = app.get(ConfigService).get<string>("server.port");
+  const port = process.env.PORT ? process.env.PORT : app.get(ConfigService).get<string>("server.port");
   await app.listen(port);
   logger.log(`Server started on port ${port}`);
 }
