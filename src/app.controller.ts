@@ -1,4 +1,4 @@
-import {Controller, Get, Query} from '@nestjs/common';
+import {Controller, Get, NotFoundException, Param, Query} from '@nestjs/common';
 import {PersistenceService} from "./persistence/persistence.service";
 
 @Controller("/api/v1")
@@ -44,6 +44,30 @@ export class AppController {
       }),
       totalPages: Math.ceil(count / limit),
       currentPage: page
+    }
+  }
+
+  @Get('/messages/:hash')
+  async getMessageDetails(@Param('hash') hash: string) {
+    const msg = await this.persistence.messages.findOne({hash: hash});
+    if (!msg) {
+      throw new NotFoundException('Message not found');
+    } else {
+      return {
+        hash: msg.hash,
+        index: msg.index,
+        sourceChainId: msg.sourceChainId,
+        targetChainId: msg.targetChainId,
+        sourceChainTxHash: msg.sourceChainTxHash,
+        targetChainTxHash: msg.targetChainTxHash,
+        sourceChainTxTimestamp: msg.sourceChainTxTimestamp,
+        targetChainTxTimestamp: msg.targetChainTxTimestamp,
+        l1BlockNumber: msg.l1BlockNumber,
+        destinationUserApplication: msg.target,
+        payload: msg.payload,
+        stateRelayCost: msg.stateRelayCost,
+        deliveryCost: msg.deliveryCost
+      };
     }
   }
 
