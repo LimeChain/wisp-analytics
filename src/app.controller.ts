@@ -67,6 +67,7 @@ export class AppController {
         targetChainTxBlockNumber: msg.targetChainTXBlockNumber,
         l1BlockNumber: msg.l1BlockNumber,
         l1ChainTxHash: msg.l1ChainTxHash,
+        l1BlockTimestamp: msg.l1BlockTimestamp,
         destinationUserApplication: msg.target,
         payload: msg.payload,
         stateRelayCost: msg.stateRelayCost,
