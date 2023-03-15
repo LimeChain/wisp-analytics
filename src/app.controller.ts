@@ -60,6 +60,7 @@ export class AppController {
         sourceChainId: msg.sourceChainId,
         targetChainId: msg.targetChainId,
         sourceChainTxHash: msg.sourceChainTxHash,
+        sourceChainTxBlockNumber: msg.l2BlockNumber,
         targetChainTxHash: msg.targetChainTxHash,
         sourceChainTxTimestamp: msg.sourceChainTxTimestamp,
         targetChainTxTimestamp: msg.targetChainTxTimestamp,
