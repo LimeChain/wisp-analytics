@@ -70,7 +70,8 @@ export class AppController {
         destinationUserApplication: msg.target,
         payload: msg.payload,
         stateRelayCost: msg.stateRelayCost,
-        deliveryCost: msg.deliveryCost
+        deliveryCost: msg.deliveryCost,
+        l2BlockNumber: msg.l2BlockNumber,
       };
     }
   }
