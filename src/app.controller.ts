@@ -123,7 +123,7 @@ export class AppController {
           medianDeliveryDuration: {
             $let: {
               vars: {
-                middle: {$divide: [{$size: '$durations'}, 2]},
+                middle: {$floor: {$divide: [{$size: '$durations'}, 2]}},
                 isEven: {$eq: [{$mod: [{$size: '$durations'}, 2]}, 0]}
               },
               in: {
