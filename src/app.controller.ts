@@ -8,16 +8,16 @@ export class AppController {
 
   @Get('/overview')
   async getOverview() {
-    const avgDurationPipeline = AppController.getAvgDurationQueryPipeline();
+    const medianDurationPipeline = AppController.getMedianDurationQueryPipeline();
     const avgCostPipeline = AppController.getAvgCostQueryPipeline();
-    const [count, avgDurationResult, avgCostResult] = await Promise.all([
+    const [count, medianDeliveryDuration, avgCostResult] = await Promise.all([
       this.persistence.messages.countDocuments().exec(),
-      this.persistence.messages.aggregate(avgDurationPipeline).exec(),
+      this.persistence.messages.aggregate(medianDurationPipeline).exec(),
       this.persistence.messages.aggregate(avgCostPipeline).exec()
     ])
     return {
       totalMessages: count,
-      averageDeliveryDuration: Math.floor(avgDurationResult[0]?.averageDeliveryDuration ?? 0),
+      averageDeliveryDuration: Math.floor(medianDeliveryDuration[0]?.medianDeliveryDuration ?? 0),
       averageCost: avgCostResult[0]?.averageCost ?? "0"
     }
   }
@@ -25,7 +25,7 @@ export class AppController {
   @Get('/messages')
   async getMessages(@Query('page') page = 1, @Query('limit') limit = 10) {
     const [messages, count] = await Promise.all([
-      this.persistence.messages.find().sort({ sourceChainTxTimestamp: -1 }).skip((page - 1) * limit).limit(limit).exec(),
+      this.persistence.messages.find().sort({sourceChainTxTimestamp: -1}).skip((page - 1) * limit).limit(limit).exec(),
       this.persistence.messages.countDocuments().exec()
     ]);
 
@@ -100,14 +100,13 @@ export class AppController {
     }
   }
 
-  private static getAvgDurationQueryPipeline() {
+  private static getMedianDurationQueryPipeline() {
     return [
       {
         $match: {
           targetChainTxTimestamp: {$ne: 0}
         }
-      },
-      {
+      }, {
         $project: {
           duration: {$subtract: ['$targetChainTxTimestamp', '$sourceChainTxTimestamp']}
         }
@@ -115,7 +114,27 @@ export class AppController {
       {
         $group: {
           _id: null,
-          averageDeliveryDuration: {$avg: '$duration'}
+          durations: {$push: '$duration'}
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          medianDeliveryDuration: {
+            $let: {
+              vars: {
+                middle: {$divide: [{$size: '$durations'}, 2]},
+                isEven: {$eq: [{$mod: [{$size: '$durations'}, 2]}, 0]}
+              },
+              in: {
+                $cond: {
+                  if: '$$isEven',
+                  then: {$avg: [{$arrayElemAt: ['$durations', '$$middle']}, {$arrayElemAt: ['$durations', {$subtract: ['$$middle', 1]}]}]},
+                  else: {$arrayElemAt: ['$durations', '$$middle']}
+                }
+              }
+            }
+          }
         }
       }
     ];
@@ -126,7 +145,7 @@ export class AppController {
       {
         $match: {
           stateRelayCost: {$ne: null},
-          deliveryCost:  {$ne: null}
+          deliveryCost: {$ne: null}
         },
       },
       {
