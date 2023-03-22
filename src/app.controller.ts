@@ -8,16 +8,16 @@ export class AppController {
 
   @Get('/overview')
   async getOverview() {
-    const medianDurationPipeline = AppController.getMedianDurationQueryPipeline();
+    const messageDurationsPipeline = AppController.getMessageDurations();
     const avgCostPipeline = AppController.getAvgCostQueryPipeline();
-    const [count, medianDeliveryDuration, avgCostResult] = await Promise.all([
+    const [count, messageDurations, avgCostResult] = await Promise.all([
       this.persistence.messages.countDocuments().exec(),
-      this.persistence.messages.aggregate(medianDurationPipeline).exec(),
+      this.persistence.messages.aggregate(messageDurationsPipeline).exec(),
       this.persistence.messages.aggregate(avgCostPipeline).exec()
     ])
     return {
       totalMessages: count,
-      averageDeliveryDuration: Math.floor(medianDeliveryDuration[0]?.medianDeliveryDuration ?? 0),
+      averageDeliveryDuration: median(messageDurations.map(d => d.duration)),
       averageCost: avgCostResult[0]?.averageCost ?? "0"
     }
   }
@@ -100,7 +100,7 @@ export class AppController {
     }
   }
 
-  private static getMedianDurationQueryPipeline() {
+  private static getMessageDurations() {
     return [
       {
         $match: {
@@ -109,32 +109,6 @@ export class AppController {
       }, {
         $project: {
           duration: {$subtract: ['$targetChainTxTimestamp', '$sourceChainTxTimestamp']}
-        }
-      },
-      {
-        $group: {
-          _id: null,
-          durations: {$push: '$duration'}
-        }
-      },
-      {
-        $project: {
-          _id: 0,
-          medianDeliveryDuration: {
-            $let: {
-              vars: {
-                middle: {$floor: {$divide: [{$size: '$durations'}, 2]}},
-                isEven: {$eq: [{$mod: [{$size: '$durations'}, 2]}, 0]}
-              },
-              in: {
-                $cond: {
-                  if: '$$isEven',
-                  then: {$avg: [{$arrayElemAt: ['$durations', '$$middle']}, {$arrayElemAt: ['$durations', {$subtract: ['$$middle', 1]}]}]},
-                  else: {$arrayElemAt: ['$durations', '$$middle']}
-                }
-              }
-            }
-          }
         }
       }
     ];
@@ -163,5 +137,10 @@ export class AppController {
       },
     ];
   }
+}
 
+function median(arr: number[]): number {
+  const sorted = arr.slice().sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
 }
